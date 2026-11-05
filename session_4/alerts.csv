@@ -1,0 +1,6 @@
+time,rule,src,dst,detail
+1700000280,sweep,10.1.0.21,-,dst_hosts=73 syn_sent=71
+1700000700,portscan,10.1.0.23,-,dst_ports=1024 syn_sent=1024
+1700001300,synflood,10.1.0.27,-,unanswered_syn=1400 dst_ports=2
+1700000040,beacon,10.1.0.19,203.0.113.50:443,conns=30 period=60.2 cv=0.015
+1700000015,beacon,10.1.0.40,10.1.0.6:443,conns=15 period=120.0 cv=0.000

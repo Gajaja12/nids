@@ -1,0 +1,14 @@
+time,rule,src,dst,detail
+1700200200,sweep,10.1.0.24,-,dst_hosts=74 syn_sent=71
+1700200650,portscan,10.1.0.13,-,dst_ports=1024 syn_sent=1024
+1700201100,portscan,10.1.0.26,-,dst_ports=18 syn_sent=17
+1700201130,portscan,10.1.0.26,-,dst_ports=17 syn_sent=15
+1700201160,portscan,10.1.0.26,-,dst_ports=17 syn_sent=16
+1700201190,portscan,10.1.0.26,-,dst_ports=16 syn_sent=15
+1700201220,portscan,10.1.0.26,-,dst_ports=18 syn_sent=16
+1700201250,portscan,10.1.0.26,-,dst_ports=18 syn_sent=16
+1700201280,portscan,10.1.0.26,-,dst_ports=13 syn_sent=11
+1700201430,synflood,10.1.0.28,-,unanswered_syn=1100 dst_ports=3
+1700200020,beacon,10.1.0.41,10.1.0.7:443,conns=20 period=90.0 cv=0.000
+1700200050,beacon,10.1.0.14,198.51.100.23:8080,conns=16 period=113.5 cv=0.254
+1700200030,beacon,10.1.0.17,192.0.2.88:443,conns=40 period=45.0 cv=0.013

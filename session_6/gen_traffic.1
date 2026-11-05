@@ -1,0 +1,335 @@
+.Dd October 29, 2026
+.Dt GEN_TRAFFIC 1
+.Os
+.Sh NAME
+.Nm gen_traffic
+.Nd write a synthetic pcap file of background and DoS/DDoS traffic
+.Sh SYNOPSIS
+.Nm
+.Fl -out Ar file
+.Op Fl -seed Ar n
+.Op Fl -background Ar sec
+.Op Fl -events Ar n
+.Op Fl -pattern Ar name
+.Op Fl -target Ar ip Ns Op : Ns Ar port
+.Op Fl -start Ar sec
+.Op Fl -duration Ar sec
+.Op Fl -rate Ar n
+.Op Fl -bots Ar n
+.Op Fl -spoof
+.Op Fl -payload Ar n
+.Nm
+.Fl -help
+.Sh DESCRIPTION
+.Nm
+writes one pcap file of synthetic traffic: a background mix of
+ordinary events
+.Pq web visits, DNS lookups, pings and internal file-share visits ,
+plus, if
+.Fl -pattern
+is given, one attack on top of it.
+See
+.Sx BACKGROUND TRAFFIC
+below for the mix.
+It opens no socket and touches no network interface; every Ethernet,
+IPv4, TCP, UDP and ICMP header is built by hand into a memory buffer
+and written straight to the file.
+The only output is that file and, alongside it, a label file.
+.Pp
+Every address
+.Nm
+uses is either in the lab's own private range
+.Pq Li 10.1.0.0/24
+or in a range RFC 5737 reserves for documentation
+.Pq Li 192.0.2.0/24 , Li 198.51.100.0/24 , Li 203.0.113.0/24 ,
+none of which is ever routed on the real Internet.
+The one fake domain name it generates ends in
+.Li .example ,
+reserved the same way by RFC 2606.
+Running
+.Nm
+can only ever produce a file.
+.Pp
+Given the same
+.Fl -seed ,
+.Nm
+always writes the same file, which is what keeps a label file correct
+across runs.
+.Sh OPTIONS
+.Bl -tag -width "-background sec"
+.It Fl -out Ar file
+Output pcap file.
+Required.
+.It Fl -seed Ar n
+PRNG seed.
+Default 1.
+.It Fl -background Ar sec
+Length of the capture, in seconds.
+Default 120.
+.It Fl -events Ar n
+Number of background events spread across the capture; see
+.Sx BACKGROUND TRAFFIC
+for the mix.
+Default 40.
+.It Fl -pattern Ar name
+Attack to generate on top of the background traffic.
+See
+.Sx PATTERNS
+below.
+Omit it for a clean, attack-free file.
+.It Fl -target Ar ip Ns Op : Ns Ar port
+Attack target, or the victim for
+.Ar reflection .
+Default
+.Li 10.1.0.5 ,
+with a pattern-specific default port if none is given.
+.It Fl -start Ar sec
+When the attack begins, in seconds from the start of the capture.
+Default is half of
+.Fl -background .
+.It Fl -duration Ar sec
+How long the attack lasts, in seconds.
+Default 30.
+.It Fl -rate Ar n
+Attack units per second, for every pattern except
+.Ar beacon ,
+where it is instead the interval between beacons, in seconds.
+Default 10.
+.It Fl -bots Ar n
+Number of distinct source hosts.
+Default 1, except
+.Ar reflection
+(20) and
+.Ar httpflood
+(30), which default to many sources unless
+.Fl -bots
+is given explicitly.
+.It Fl -spoof
+For
+.Ar synflood
+and
+.Ar udpflood :
+draw a fresh random source address for every packet, instead of a
+fixed pool of
+.Fl -bots
+addresses.
+.It Fl -payload Ar n
+Payload size in bytes, for
+.Ar udpflood
+(default 60) and
+.Ar reflection
+(default 500).
+.It Fl -help
+Print a short usage summary with defaults and worked examples, then
+exit.
+.El
+.Sh PATTERNS
+.Bl -tag -width "icmpflood"
+.It Ar synflood
+TCP SYNs to one target port, never answered.
+Single source by default; distributed with
+.Fl -bots
+and
+.Fl -spoof .
+.It Ar udpflood
+UDP datagrams of random payload to one host.
+Single source by default; distributed with
+.Fl -bots
+and
+.Fl -spoof .
+.It Ar icmpflood
+ICMP echo requests at a fixed rate.
+.It Ar dns
+Queries for a random 8-character hex label under the fixed
+.Li .example
+domain, the random-subdomain
+.Pq Dq water torture
+pattern.
+Single source by default; distributed with
+.Fl -bots .
+.It Ar reflection
+Large UDP replies from source port 123
+.Pq NTP ,
+from many reflectors, to one victim: the view from the victim's
+vantage point, since the spoofed request that triggered each reply
+was never addressed there.
+Distributed by default.
+.It Ar beacon
+One short, complete TCP connection every
+.Fl -rate
+seconds, with jitter, from one fixed source: a command-and-control
+beacon.
+.It Ar httpflood
+Many short, complete TCP connections from many hosts to one port.
+Distributed by default.
+.El
+.Sh BACKGROUND TRAFFIC
+Each of the
+.Fl -events
+background events is one lab client
+.Pq Li 10.1.0.20 Ns - Ns Li 59
+picked at random, doing one of the following, chosen by weighted
+roll:
+.Bl -tag -width "55%"
+.It 55%
+A web visit: a complete TCP exchange to
+.Li 10.1.0.5:443 .
+.It 25%
+A DNS lookup: one query for a random label under
+.Li .example
+to the resolver,
+.Li 10.1.0.1:53 .
+.It 12%
+A ping: an ICMP echo request to
+.Li 10.1.0.1
+and its reply.
+.It 8%
+An internal file-share visit: a complete TCP exchange to
+.Li 10.1.0.6:445 .
+.El
+.Pp
+The web visits land on
+.Li 10.1.0.5:443 ,
+the same host and port
+.Ar synflood
+and
+.Ar beacon
+use by default: a legitimate baseline on that service for those two
+attacks to stand out against, the way a real flood or a real C2
+beacon would.
+The DNS lookups use the same port
+.Pq 53
+as the
+.Ar dns
+pattern's default target port, but a different host
+.Pq the resolver, not Li 10.1.0.5 .
+Every other pattern and every other background event kind use
+disjoint hosts, ports or protocols.
+.Sh OUTPUT
+.Fl -out Ar file
+writes the pcap, and
+.Pa file Ns Li .labels.csv
+alongside it, with one header row and at most one data row in
+.Li rule,src,start,end
+format.
+.Pp
+For a single clear source
+.Pq one bot, no Fl -spoof ,
+.Li src
+names the attacker.
+For a distributed pattern it names the
+.Em victim
+instead, since a per-source rule has no single attacker to key a
+label on; detecting that traffic needs a per-target count.
+A file with no
+.Fl -pattern
+gets a label file with only the header row.
+.Sh EXIT STATUS
+.Ex -std
+A bad option, a missing
+.Fl -out ,
+an unknown
+.Fl -pattern ,
+or a malformed address terminates
+.Nm
+immediately with status 1.
+.Sh EXAMPLES
+Background traffic only, to check that a detector raises nothing on
+quiet traffic:
+.Bd -literal -offset indent
+\&./gen_traffic --out clean.pcap --background 120
+.Ed
+.Pp
+A SYN flood from one source, starting 60 seconds in:
+.Bd -literal -offset indent
+\&./gen_traffic --out synflood.pcap --background 120 \e
+    --pattern synflood --start 60 --duration 20 --rate 30
+.Ed
+.Pp
+The same flood, spread over 20 spoofed sources instead of one:
+.Bd -literal -offset indent
+\&./gen_traffic --out synflood_dist.pcap --background 120 \e
+    --pattern synflood --start 60 --duration 20 --rate 30 \e
+    --bots 20 --spoof
+.Ed
+.Pp
+A beacon roughly every 20 seconds;
+.Fl -duration
+must cover several periods:
+.Bd -literal -offset indent
+\&./gen_traffic --out beacon.pcap --background 300 \e
+    --pattern beacon --rate 20 --duration 300
+.Ed
+.Sh CREATING A DATASET
+.Nm
+has no single flag for dataset size or class balance.
+Each run writes one labeled file; a dataset is many such runs, swept
+over the parameters below and labeled by the
+.Pa .labels.csv
+each one writes.
+.Bl -tag -width "duration/rate"
+.It seed
+Sweep
+.Fl -seed
+for distinct-but-comparable samples at fixed settings; two runs with
+every other flag equal and a different seed are different traffic,
+not different classes.
+.It class balance
+No direct ratio flag.
+Background volume is
+.Fl -events ;
+attack volume is
+.Fl -rate
+times
+.Fl -duration .
+Balance the two sides by adjusting these against a fixed
+.Fl -background
+window.
+.It attack type and shape
+Sweep
+.Fl -pattern ,
+and for
+.Ar synflood Ns / Ns Ar udpflood Ns / Ns Ar dns ,
+.Fl -bots
+and
+.Fl -spoof ,
+for single-source versus distributed examples of the same attack.
+.It position and intensity
+Sweep
+.Fl -start
+(early, mid, late in the window) and
+.Fl -rate Ns / Ns Fl -duration
+(quiet versus intense, short versus sustained) for examples that
+span easy to hard to detect.
+.El
+.Pp
+A small sweep, one file per
+.Pq pattern, bots, seed
+combination:
+.Bd -literal -offset indent
+\&for pat in synflood udpflood icmpflood dns reflection beacon httpflood; do
+    for bots in 1 20; do
+        for seed in 1 2 3 4 5; do
+            ./gen_traffic --out ${pat}_b${bots}_s${seed}.pcap \e
+                --seed $seed --background 120 --pattern $pat \e
+                --start 60 --duration 20 --rate 30 --bots $bots
+        done
+    done
+done
+.Ed
+.Pp
+Add background-only files, varying only
+.Fl -seed ,
+for the negative class:
+.Bd -literal -offset indent
+\&for seed in 1 2 3 4 5; do
+    ./gen_traffic --out clean_s${seed}.pcap --seed $seed \e
+        --background 120
+done
+.Ed
+.Pp
+Ground truth for the whole set is the union of the
+.Pa .labels.csv
+files, not a flag
+.Nm
+sets directly; a clean file's label has only the header row.

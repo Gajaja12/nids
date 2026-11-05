@@ -1,0 +1,7 @@
+2023-11-17 05:47:00 05:47:00 beacon 10.1.0.41 > 10.1.0.7:443 alerts=1 conns=20 period=90.0 cv=0.000
+2023-11-17 05:47:10 05:47:10 beacon 10.1.0.17 > 192.0.2.88:443 alerts=1 conns=40 period=45.0 cv=0.013
+2023-11-17 05:47:30 05:47:30 beacon 10.1.0.14 > 198.51.100.23:8080 alerts=1 conns=16 period=113.5 cv=0.254
+2023-11-17 05:50:00 05:50:30 sweep 10.1.0.24 > - alerts=1 dst_hosts=74 syn_sent=71
+2023-11-17 05:57:30 05:58:00 portscan 10.1.0.13 > - alerts=1 dst_ports=1024 syn_sent=1024
+2023-11-17 06:05:00 06:08:30 portscan 10.1.0.26 > - alerts=7 dst_ports=18 syn_sent=17
+2023-11-17 06:10:30 06:11:00 synflood 10.1.0.28 > - alerts=1 unanswered_syn=1100 dst_ports=3
